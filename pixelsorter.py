@@ -139,17 +139,17 @@ class App(tk.Frame):
         width_canv = self.canvas.winfo_width()
         height_canv = self.canvas.winfo_height()
 
-        if width > width_canv or height > height_canv:
-            maxw = min(width, width_canv)
-            maxh = min(height, height_canv)
-            ratio = min(maxw / width, maxh / height)
+        # if width > width_canv or height > height_canv:
+        maxw = min(width, width_canv)
+        maxh = min(height, height_canv)
+        ratio = min(maxw / width, maxh / height)
 
-            self.im_tk = ImageTk.PhotoImage(
-                self.im.resize((round(width * ratio), round(height * ratio)),
-                               Image.ANTIALIAS))
-        else:
-            if self.im_tk is None:
-                self.im_tk = ImageTk.PhotoImage(self.im)
+        self.im_tk = ImageTk.PhotoImage(
+            self.im.resize((round(width * ratio), round(height * ratio)),
+                           Image.ANTIALIAS))
+        # else:
+        #     if self.im_tk is None:
+        #         self.im_tk = ImageTk.PhotoImage(self.im)
 
         self.clear_canvas()
         self.im_id = self.canvas.create_image(width_canv // 2, height_canv // 2,
@@ -160,6 +160,7 @@ class App(tk.Frame):
             return
 
         self.im = self.source
+        self.im_tk = None
         self.update_canvas()
 
     def file_open(self, event=None):
@@ -172,6 +173,7 @@ class App(tk.Frame):
         try:
             self.source = Image.open(new_filename).convert('RGB')
             self.im = self.source
+            self.im_tk = None
             self.filename = ''
             self.filename_v.set('None')
             self.update_canvas()
