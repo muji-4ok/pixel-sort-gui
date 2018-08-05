@@ -1,11 +1,13 @@
 import os.path
+import tkinter as tk
 from multiprocessing.pool import ThreadPool
 from tkinter import filedialog, messagebox
 
 from PIL import ImageTk, Image
 
-from interface_options import *
-from interface_progress import *
+from interface_options import Options
+from interface_progress import Progress
+from sorting import sort
 
 # Constants ----------------
 FILETYPES = [('All', '*.*'), ('JPG', '*.jpg'), ('PNG', '*.png')]
@@ -25,7 +27,7 @@ class App(tk.Frame):
         self.filename_v = tk.StringVar()
         self.filename_v.set('None')
         self.filename = ''
-        self.options = default_options
+        self.options = Options.default_options
         self.im_id = None
         self.resize_id = None
         self.im = None
@@ -47,7 +49,6 @@ class App(tk.Frame):
 
         # Canvas ----------------
         self.canvas = tk.Canvas(self)
-
         self.canvas.grid(row=0, column=0, sticky='news')
 
         # Other ----------------
@@ -113,18 +114,19 @@ class App(tk.Frame):
         self.update_canvas()
 
     def open_options(self):
-        modal = options_toplevel(self.master, **self.options)
-        modal.update()
+        options_toplevel = tk.Toplevel()
+        options_toplevel.transient(self.master)
+        options_frame = Options(options_toplevel, self.options)
 
-        modal.grab_set()
-        self.master.wait_window(modal)
-        modal.grab_release()
+        options_toplevel.grab_set()
+        self.master.wait_window(options_toplevel)
+        options_toplevel.grab_release()
 
         self.options.clear()
-        self.options.update(modal.get_options(), )
+        self.options.update(options_frame.get_options(), )
 
     def close_progress(self):
-        self.progress.destroy()
+        self.progress_toplevel.destroy()
 
     def clear_canvas(self):
         if self.im_id is not None:
@@ -147,9 +149,6 @@ class App(tk.Frame):
         self.im_tk = ImageTk.PhotoImage(
             self.im.resize((round(width * ratio), round(height * ratio)),
                            Image.ANTIALIAS))
-        # else:
-        #     if self.im_tk is None:
-        #         self.im_tk = ImageTk.PhotoImage(self.im)
 
         self.clear_canvas()
         self.im_id = self.canvas.create_image(width_canv // 2, height_canv // 2,
@@ -210,17 +209,18 @@ class App(tk.Frame):
         if not self.source:
             return
 
-        self.master.update()
-        self.progress = progress_toplevel(self.master)
-        self.progress.grab_set()
-        self.progress.update()
+        self.progress_toplevel = tk.Toplevel()
+        self.progress_toplevel.transient(self.master)
+        self.progress_toplevel.progress_frame = Progress(self.progress_toplevel)
+
+        self.progress_toplevel.grab_set()
 
         self.result = self.pool.apply_async(sort, args=(self.source.copy(),),
                                             kwds=self.options)
 
-        self.progress.after(100, self.check_result)
-        self.master.wait_window(self.progress)
-        self.progress.grab_release()
+        self.progress_toplevel.after(100, self.check_result)
+        self.master.wait_window(self.progress_toplevel)
+        self.progress_toplevel.grab_release()
 
     def check_result(self):
         if self.result.ready():
@@ -229,7 +229,7 @@ class App(tk.Frame):
             self.close_progress()
             self.update_canvas()
         else:
-            self.progress.after(100, self.check_result)
+            self.progress_toplevel.after(100, self.check_result)
 
 
 # Toplevel config ----------------

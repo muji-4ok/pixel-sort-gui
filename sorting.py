@@ -1,49 +1,27 @@
-from collections import deque
+import os
+from subprocess import call
+from uuid import uuid4
 
-from sortingpaths import *
-
-from sortingfuncs import *
+from PIL import Image
 
 
 def sort(im, func=None, path=None, reverse=False, mirror=False, angle=0,
-         max_intervals=0, randomize=False, progress=0):
-    width, height = im.size  # for eval
-    path_gen = paths[path][0]
-    path_args = paths[path][1:]
-    path = apply_intervals(eval(f"{path_gen}({','.join(path_args)})"),
-                           max_intervals, randomize, progress)
-    func = eval(func)
+         max_intervals=0, randomize=False, merge=False):
+    in_filename = str(uuid4()) + ".png"
+    out_filename = str(uuid4()) + ".png"
+    im.save(in_filename)
+    max_intervals = str(max_intervals)
+    randomize = str(int(randomize))
+    angle = str(angle)
+    mirror = str(int(mirror))
+    merge = str(int(merge))
+    reverse = str(int(reverse))
+    call(["PixelSorter.exe", in_filename, out_filename, path, func,
+          max_intervals, randomize, angle, merge, reverse, mirror])
+    opened_im = Image.open(out_filename)
+    out_im = opened_im.copy()
+    del opened_im
+    os.remove(in_filename)
+    os.remove(out_filename)
 
-    return _sort(im, func, path, reverse, mirror)
-
-
-def _sort(im, func, path, reverse=False, mirror=False):
-    pixels = matrix(list(im.getdata()), im.size)
-    new_pixels = new_matrix(im.size)
-
-    def func_map(ij):
-        i, j = ij
-
-        return func(pixels[i][j])
-
-    for coords in path:
-        reverse = not reverse if mirror else reverse
-        new_coords = sorted(coords, key=func_map, reverse=reverse)
-
-        if mirror:
-            coords_deque = deque()
-
-            for i, coord in enumerate(new_coords):
-                if i % 2:
-                    coords_deque.append(coord)
-                else:
-                    coords_deque.appendleft(coord)
-
-            new_coords = list(coords_deque)
-
-        for (i, j), (ni, nj) in zip(coords, new_coords):
-            new_pixels[i][j] = pixels[ni][nj]
-
-    im.putdata(flatten(new_pixels))
-
-    return im
+    return out_im
