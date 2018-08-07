@@ -8,4 +8,4 @@ Projects I took inspiration from: https://github.com/rkargon/pixelsorter, https:
 Screenshot:
 ![Screenshot][screenshot]
 
-[screenshot]: screenshot.png
+[screenshot]: screenshot.jpg
