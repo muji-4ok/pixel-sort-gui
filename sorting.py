@@ -5,7 +5,7 @@ from uuid import uuid4
 from PIL import Image
 
 
-def sort(im, func=None, path=None, reverse=False, mirror=False, angle=0,
+def sort(im, path=None, reverse=False, mirror=False, angle=0, to_interval=False,
          max_intervals=0, randomize=False, merge=False):
     in_filename = str(uuid4()) + ".png"
     out_filename = str(uuid4()) + ".png"
@@ -16,8 +16,9 @@ def sort(im, func=None, path=None, reverse=False, mirror=False, angle=0,
     mirror = str(int(mirror))
     merge = str(int(merge))
     reverse = str(int(reverse))
-    call(["PixelSorter.exe", in_filename, out_filename, path, func,
-          max_intervals, randomize, angle, merge, reverse, mirror])
+    to_interval = str(int(to_interval))
+    call(["PixelSorter.exe", in_filename, out_filename, path, max_intervals,
+          randomize, angle, merge, reverse, mirror, to_interval])
     opened_im = Image.open(out_filename)
     out_im = opened_im.copy()
     del opened_im

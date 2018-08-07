@@ -1,18 +1,17 @@
 import tkinter as tk
 
-from sortingfuncs import funcs
 from sortingpaths import paths
 
 
 class Options(tk.Frame):
-    default_options = {'func': 'lightness',
-                       'path': 'rows',
+    default_options = {'path': 'rows',
                        'reverse': False,
                        'mirror': False,
                        'angle': 0,
                        'max_intervals': 0,
                        'randomize': False,
-                       'merge': False}
+                       'merge': False,
+                       'to_interval': False}
 
     def __init__(self, master, options_d):
         super().__init__(master)
@@ -32,29 +31,30 @@ class Options(tk.Frame):
         self.general_f['text'] = 'General'
         self.general_f.grid(row=0, column=0, sticky='news')
 
-        self.func_v = tk.StringVar()
-        self.func_v.set(options_d['func'])
-        self.func_menu = tk.OptionMenu(self.general_f, self.func_v, *funcs)
-        self.func_menu['width'] = len(max(funcs, key=len))
-        self.func_menu.grid(row=0, column=0, sticky='ew')
-
         self.reverse_v = tk.BooleanVar()
         self.reverse_v.set(options_d['reverse'])
         self.reverse_check = tk.Checkbutton(self.general_f, text='Reverse',
                                             variable=self.reverse_v)
-        self.reverse_check.grid(row=1, column=0, sticky='ew')
+        self.reverse_check.grid(row=0, column=0, sticky='ew')
 
         self.mirror_v = tk.BooleanVar()
         self.mirror_v.set(options_d['mirror'])
         self.mirror_check = tk.Checkbutton(self.general_f, text='Mirror',
                                            variable=self.mirror_v)
-        self.mirror_check.grid(row=2, column=0, sticky='ew')
+        self.mirror_check.grid(row=1, column=0, sticky='ew')
 
         self.merge_v = tk.BooleanVar()
         self.merge_v.set(options_d['merge'])
         self.merge_check = tk.Checkbutton(self.general_f, text='Merge',
                                           variable=self.merge_v)
-        self.merge_check.grid(row=3, column=0, sticky='ew')
+        self.merge_check.grid(row=2, column=0, sticky='ew')
+
+        self.to_interval_v = tk.BooleanVar()
+        self.to_interval_v.set(options_d['to_interval'])
+        self.to_interval_check = tk.Checkbutton(self.general_f,
+                                                text='Do intervals',
+                                                variable=self.to_interval_v)
+        self.to_interval_check.grid(row=3, column=0, sticky='ew')
         # General ----------------
         #
         #
@@ -113,13 +113,13 @@ class Options(tk.Frame):
         master.geometry(f'{w}x{h}+{(ws - w) // 2}+{(hs - h) // 2 - 100}')
 
     def get_options(self):
-        params = {'func': self.func_v.get(),
-                  'path': self.path_v.get(),
+        params = {'path': self.path_v.get(),
                   'reverse': self.reverse_v.get(),
                   'mirror': self.mirror_v.get(),
                   'angle': self.angle_v.get(),
                   'max_intervals': self.interval_v.get(),
                   'randomize': self.randomize_v.get(),
-                  'merge': self.merge_v.get()}
+                  'merge': self.merge_v.get(),
+                  'to_interval': self.to_interval_v.get()}
 
         return params
