@@ -3,17 +3,19 @@ import sys
 
 from cx_Freeze import setup, Executable
 
+
+# Change this
+python_root = r'C:\Users\<Username>\AppData\Local\Programs\Python\Python36'
+
 # Fix bugs
 include_files = [
-    r'C:\Users\Arseny\AppData\Local\Programs\Python\Python36\DLLs\tk86t.dll',
-    r'C:\Users\Arseny\AppData\Local\Programs\Python\Python36\DLLs\tcl86t.dll',
+    python_root + r'\DLLs\tk86t.dll',
+    python_root + r'\DLLs\tcl86t.dll',
     r'app_icon.ico',
     r'PixelSorterCpp.exe'
 ]
-os.environ['TCL_LIBRARY'] = r'C:\Users\Arseny\AppData\Local\Programs' \
-                            r'\Python\Python36\tcl\tcl8.6'
-os.environ['TK_LIBRARY'] = r'C:\Users\Arseny\AppData\Local\Programs' \
-                           r'\Python\Python36\tcl\tk8.6'
+os.environ['TCL_LIBRARY'] = python_root + r'\tcl\tcl8.6'
+os.environ['TK_LIBRARY'] = python_root + r'\tcl\tk8.6'
 
 # Dependencies are automatically detected, but it might need
 # fine tuning.
