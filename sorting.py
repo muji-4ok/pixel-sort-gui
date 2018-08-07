@@ -19,8 +19,7 @@ def sort(im, path=None, reverse=False, mirror=False, angle=0, to_interval=False,
     to_interval = str(int(to_interval))
     subprocess.call(["PixelSorterCpp.exe", in_filename, out_filename, path,
                      max_intervals, randomize, angle, merge, reverse, mirror,
-                     to_interval],
-                    creationflags=subprocess.CREATE_NO_WINDOW)
+                     to_interval])
     opened_im = Image.open(out_filename)
     out_im = opened_im.copy()
     del opened_im
