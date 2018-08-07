@@ -1,9 +1,8 @@
 import tkinter as tk
 
-from sortingpaths import paths
-
 
 class Options(tk.Frame):
+    paths = ['columns', 'rows', 'angled', 'rectangles']
     default_options = {'path': 'rows',
                        'reverse': False,
                        'mirror': False,
@@ -68,8 +67,8 @@ class Options(tk.Frame):
 
         self.path_v = tk.StringVar()
         self.path_v.set(options_d['path'])
-        self.path_menu = tk.OptionMenu(self.path_f, self.path_v, *paths)
-        self.path_menu['width'] = len(max(paths, key=len))
+        self.path_menu = tk.OptionMenu(self.path_f, self.path_v, *self.paths)
+        self.path_menu['width'] = len(max(self.paths, key=len))
         self.path_menu.grid(row=0, column=0, sticky='ew')
 
         self.angle_v = tk.IntVar()
