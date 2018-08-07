@@ -8,14 +8,10 @@ from PIL import ImageTk, Image
 from interface_options import Options
 from interface_progress import Progress
 from sorting import sort
+from util import *
 
 # Constants ----------------
 FILETYPES = [('All', '*.*'), ('JPG', '*.jpg'), ('PNG', '*.png')]
-
-
-# Functions ----------------
-def rgb(*args):
-    return '#{0:02x}{1:02x}{2:02x}'.format(*args)
 
 
 class App(tk.Frame):

@@ -1,4 +1,5 @@
 import tkinter as tk
+from util import *
 
 
 class Options(tk.Frame):
@@ -52,7 +53,8 @@ class Options(tk.Frame):
         self.to_interval_v.set(options_d['to_interval'])
         self.to_interval_check = tk.Checkbutton(self.general_f,
                                                 text='Do intervals',
-                                                variable=self.to_interval_v)
+                                                variable=self.to_interval_v,
+                                                command=self.to_interval_click)
         self.to_interval_check.grid(row=3, column=0, sticky='ew')
         # General ----------------
         #
@@ -66,6 +68,7 @@ class Options(tk.Frame):
         self.path_f.grid(row=0, column=1, sticky='news')
 
         self.path_v = tk.StringVar()
+        self.path_v.trace_add('write', self.path_menu_click)
         self.path_v.set(options_d['path'])
         self.path_menu = tk.OptionMenu(self.path_f, self.path_v, *self.paths)
         self.path_menu['width'] = len(max(self.paths, key=len))
@@ -103,6 +106,10 @@ class Options(tk.Frame):
         #
         #
 
+        # Trigger gray out logic
+        self.to_interval_click()
+        self.path_menu_click()
+
         # Center window ----------------
         master.update_idletasks()
         w = master.winfo_width()
@@ -110,6 +117,33 @@ class Options(tk.Frame):
         ws = master.winfo_screenwidth()
         hs = master.winfo_screenheight()
         master.geometry(f'{w}x{h}+{(ws - w) // 2}+{(hs - h) // 2 - 100}')
+
+    def path_menu_click(self, v1=None, v2=None, v3=None):
+        try:
+            self.path_menu
+        except AttributeError:
+            return
+
+        state = self.path_v.get()
+
+        if state == 'angled':
+            self.angle_scale['state'] = 'normal'
+            self.angle_scale['foreground'] = rgb(5, 5, 10)
+        else:
+            self.angle_scale['state'] = 'disabled'
+            self.angle_scale['foreground'] = rgb(155, 109, 133)
+
+    def to_interval_click(self):
+        state = self.to_interval_v.get()
+
+        if state:
+            self.interval_scale['state'] = 'normal'
+            self.interval_scale['foreground'] = rgb(5, 5, 10)
+            self.randomize_check['state'] = 'normal'
+        else:
+            self.interval_scale['state'] = 'disabled'
+            self.interval_scale['foreground'] = rgb(155, 109, 133)
+            self.randomize_check['state'] = 'disabled'
 
     def get_options(self):
         params = {'path': self.path_v.get(),
