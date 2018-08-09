@@ -1,29 +1,29 @@
-import os
-import subprocess
-from uuid import uuid4
+import ctypes
 
 from PIL import Image
 
+PATH_TO_DLL = "PixelSorterVCDLL.dll"
+
 
 def sort(im, path=None, reverse=False, mirror=False, angle=0, to_interval=False,
-         max_intervals=0, randomize=False, merge=False):
-    in_filename = str(uuid4()) + ".png"
-    out_filename = str(uuid4()) + ".png"
-    im.save(in_filename)
-    max_intervals = str(max_intervals)
-    randomize = str(int(randomize))
-    angle = str(angle)
-    mirror = str(int(mirror))
-    merge = str(int(merge))
-    reverse = str(int(reverse))
-    to_interval = str(int(to_interval))
-    subprocess.call(["PixelSorterCpp.exe", in_filename, out_filename, path,
-                     max_intervals, randomize, angle, merge, reverse, mirror,
-                     to_interval])
-    opened_im = Image.open(out_filename)
-    out_im = opened_im.copy()
-    del opened_im
-    os.remove(in_filename)
-    os.remove(out_filename)
+         max_intervals=0, randomize=False, merge=False, low_threshold=0):
+    dll = ctypes.WinDLL(PATH_TO_DLL)
+    im = im.convert("RGBA")
+    im_bytes = im.tobytes()
+    im_bytes_p = ctypes.c_char_p(im_bytes)
 
-    return out_im
+    dll.sortImage.argtypes = [ctypes.c_uint, ctypes.c_uint, ctypes.c_char_p,
+                              ctypes.c_char_p, ctypes.c_int, ctypes.c_bool,
+                              ctypes.c_int, ctypes.c_bool, ctypes.c_bool,
+                              ctypes.c_bool, ctypes.c_bool, ctypes.c_int]
+    dll.sortImage.restype = ctypes.POINTER(ctypes.c_char)
+
+    data_ptr = dll.sortImage(im.width, im.height, im_bytes_p,
+                             bytes(path, "UTF-8"),
+                             max_intervals, randomize, angle, merge, reverse,
+                             mirror, to_interval, low_threshold)
+
+    out_data = ctypes.string_at(data_ptr, im.width * im.height * 4)
+    im_out = Image.frombytes("RGB", im.size, out_data, "raw", "RGBX", 0, 1)
+
+    return im_out

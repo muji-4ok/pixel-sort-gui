@@ -3,7 +3,7 @@ from util import *
 
 
 class Options(tk.Frame):
-    paths = ['columns', 'rows', 'angled', 'rectangles']
+    paths = ['columns', 'rows', 'angled', 'rectangles', 'edges rows']
     default_options = {'path': 'rows',
                        'reverse': False,
                        'mirror': False,
@@ -11,7 +11,8 @@ class Options(tk.Frame):
                        'max_intervals': 0,
                        'randomize': False,
                        'merge': False,
-                       'to_interval': False}
+                       'to_interval': False,
+                       'low_threshold': 0}
 
     def __init__(self, master, options_d):
         super().__init__(master)
@@ -74,18 +75,6 @@ class Options(tk.Frame):
         self.path_menu['width'] = len(max(self.paths, key=len))
         self.path_menu.grid(row=0, column=0, sticky='ew')
 
-        self.angle_v = tk.IntVar()
-        self.angle_v.set(options_d['angle'])
-        self.angle_scale = tk.Scale(self.path_f)
-        self.angle_scale['from_'] = -180
-        self.angle_scale['to'] = 180
-        self.angle_scale['orient'] = 'horizontal'
-        self.angle_scale['length'] = 180
-        self.angle_scale['tickinterval'] = 60
-        self.angle_scale['label'] = 'Angle'
-        self.angle_scale['variable'] = self.angle_v
-        self.angle_scale.grid(row=1, column=0, sticky='ew')
-
         self.interval_v = tk.IntVar()
         self.interval_v.set(options_d['max_intervals'])
         self.interval_scale = tk.Scale(self.path_f)
@@ -95,20 +84,50 @@ class Options(tk.Frame):
         self.interval_scale['length'] = 180
         self.interval_scale['label'] = 'Interval'
         self.interval_scale['variable'] = self.interval_v
-        self.interval_scale.grid(row=2, column=0, sticky='ew')
+        self.interval_scale.grid(row=3, column=0, sticky='ew')
 
         self.randomize_v = tk.BooleanVar()
         self.randomize_v.set(options_d['randomize'])
         self.randomize_check = tk.Checkbutton(self.path_f, text='Randomize',
                                               variable=self.randomize_v)
-        self.randomize_check.grid(row=3, column=0, sticky='ew')
+        self.randomize_check.grid(row=4, column=0, sticky='ew')
         # Path ----------------
         #
         #
 
-        # Trigger gray out logic
-        self.to_interval_click()
-        self.path_menu_click()
+        #
+        #
+        # Additional ----------------
+        self.additional_f = tk.LabelFrame(master)
+        self.additional_f['text'] = 'Additional'
+        self.additional_f.grid(row=0, column=2, sticky='news')
+
+        self.angle_v = tk.IntVar()
+        self.angle_v.set(options_d['angle'])
+        self.angle_scale = tk.Scale(self.additional_f)
+        self.angle_scale['from_'] = -180
+        self.angle_scale['to'] = 180
+        self.angle_scale['orient'] = 'horizontal'
+        self.angle_scale['length'] = 180
+        self.angle_scale['tickinterval'] = 60
+        self.angle_scale['label'] = 'Angle'
+        self.angle_scale['variable'] = self.angle_v
+        self.angle_scale.grid(row=0, column=0, sticky='ew')
+
+        self.low_threshold_v = tk.IntVar()
+        self.low_threshold_v.set(options_d['low_threshold'])
+        self.low_threshold_scale = tk.Scale(self.additional_f)
+        self.low_threshold_scale['from_'] = 0
+        self.low_threshold_scale['to'] = 200
+        self.low_threshold_scale['orient'] = 'horizontal'
+        self.low_threshold_scale['length'] = 180
+        self.low_threshold_scale['tickinterval'] = 50
+        self.low_threshold_scale['label'] = 'Low threshold'
+        self.low_threshold_scale['variable'] = self.low_threshold_v
+        self.low_threshold_scale.grid(row=1, column=0, sticky='ew')
+        # Additional ----------------
+        #
+        #
 
         # Center window ----------------
         master.update_idletasks()
@@ -118,29 +137,56 @@ class Options(tk.Frame):
         hs = master.winfo_screenheight()
         master.geometry(f'{w}x{h}+{(ws - w) // 2}+{(hs - h) // 2 - 100}')
 
+        # Trigger disappearing logic
+        # self.path_menu.grid_propagate(False)
+        # self.path_f.grid_propagate(False)
+        # self.general_f.grid_propagate(False)
+        self.to_interval_click()
+        self.path_menu_click()
+
     def path_menu_click(self, v1=None, v2=None, v3=None):
         try:
             self.path_menu
         except AttributeError:
             return
 
+        self.angle_scale['state'] = 'disabled'
+        self.angle_scale['foreground'] = rgb(155, 109, 133)
+        self.low_threshold_scale['state'] = 'disabled'
+        self.low_threshold_scale['foreground'] = rgb(155, 109, 133)
+
         state = self.path_v.get()
 
         if state == 'angled':
+            # self.angle_scale.grid(row=0, column=1, sticky='ew')
+            # self.low_threshold_scale.grid_forget()
             self.angle_scale['state'] = 'normal'
             self.angle_scale['foreground'] = rgb(5, 5, 10)
-        else:
-            self.angle_scale['state'] = 'disabled'
-            self.angle_scale['foreground'] = rgb(155, 109, 133)
+        elif state == 'edges rows':
+            # self.low_threshold_scale.grid(row=0, column=1, sticky='ew')
+            # self.angle_scale.grid_forget()
+            self.low_threshold_scale['state'] = 'normal'
+            self.low_threshold_scale['foreground'] = rgb(5, 5, 10)
+        # else:
+        #     # self.angle_scale.grid_forget()
+        #     # self.low_threshold_scale.grid_forget()
+        #     self.angle_scale['state'] = 'disabled'
+        #     self.angle_scale['foreground'] = rgb(155, 109, 133)
+        #     self.low_threshold_scale['state'] = 'disabled'
+        #     self.low_threshold_scale['foreground'] = rgb(155, 109, 133)
 
     def to_interval_click(self):
         state = self.to_interval_v.get()
 
         if state:
+            # self.interval_scale.grid(row=1, column=0, sticky='ew')
+            # self.randomize_check.grid(row=2, column=0, sticky='ew')
             self.interval_scale['state'] = 'normal'
             self.interval_scale['foreground'] = rgb(5, 5, 10)
             self.randomize_check['state'] = 'normal'
         else:
+            # self.interval_scale.grid_forget()
+            # self.randomize_check.grid_forget()
             self.interval_scale['state'] = 'disabled'
             self.interval_scale['foreground'] = rgb(155, 109, 133)
             self.randomize_check['state'] = 'disabled'
@@ -153,6 +199,7 @@ class Options(tk.Frame):
                   'max_intervals': self.interval_v.get(),
                   'randomize': self.randomize_v.get(),
                   'merge': self.merge_v.get(),
-                  'to_interval': self.to_interval_v.get()}
+                  'to_interval': self.to_interval_v.get(),
+                  'low_threshold': self.low_threshold_v.get()}
 
         return params
