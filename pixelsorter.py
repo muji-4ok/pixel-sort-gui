@@ -165,20 +165,32 @@ class App(tk.Frame):
         if not new_filename:
             return
 
-        try:
-            self.source = Image.open(new_filename).convert('RGB')
-            self.im = self.source
-            self.im_tk = None
-            self.filename = ''
-            self.filename_v.set('None')
+        self.async_image_operation(
+            lambda filename: Image.open(filename).convert('RGB'),
+            self.check_open, (new_filename,), check_args=(new_filename,))
+
+    def check_open(self, new_filename):
+        if self.result.ready():
+            try:
+                self.source = self.result.get()
+                self.im = self.source
+                self.im_tk = None
+                self.filename = ''
+                self.filename_v.set('None')
+            except OSError:
+                msg = f'Cannot open {new_filename}'
+                messagebox.showwarning('File error', msg)
+
+            self.close_progress()
             self.update_canvas()
-        except OSError:
-            msg = f'Cannot open {new_filename}'
-            messagebox.showwarning('File error', msg)
+        else:
+            self.progress_toplevel.after(100, self.check_open, new_filename)
 
     def file_save(self, event=None):
         if self.filename:
-            self.im.save(self.filename)
+            self.async_image_operation(
+                lambda filename: self.im.save(filename), self.check_save,
+                (self.filename,), check_args=(self.filename,))
         else:
             self.file_save_as()
 
@@ -193,39 +205,53 @@ class App(tk.Frame):
         if not new_filename:
             return
 
-        try:
-            self.im.save(new_filename)
-            self.filename = new_filename
-            self.filename_v.set(os.path.split(new_filename)[1])
-        except ValueError:
-            msg = f'Cannot save {new_filename}'
-            messagebox.showwarning('File error', msg)
+        self.async_image_operation(
+            lambda filename: self.im.save(filename), self.check_save,
+            (new_filename,), check_args=(new_filename,))
+
+    def check_save(self, new_filename):
+        if self.result.ready():
+            try:
+                self.result.get()
+                self.filename = new_filename
+                self.filename_v.set(os.path.split(new_filename)[1])
+            except ValueError:
+                msg = f'Cannot save {new_filename}'
+                messagebox.showwarning('File error', msg)
+
+            self.close_progress()
+        else:
+            self.progress_toplevel.after(100, self.check_save, new_filename)
 
     def file_sort(self, event=None):
         if not self.source:
             return
 
-        self.progress_toplevel = tk.Toplevel()
-        self.progress_toplevel.transient(self.master)
-        self.progress_toplevel.progress_frame = Progress(self.progress_toplevel)
+        self.async_image_operation(sort, self.check_sort, (self.source.copy(),),
+                                   self.options)
 
-        self.progress_toplevel.grab_set()
-
-        self.result = self.pool.apply_async(sort, args=(self.source.copy(),),
-                                            kwds=self.options)
-
-        self.progress_toplevel.after(100, self.check_result)
-        self.master.wait_window(self.progress_toplevel)
-        self.progress_toplevel.grab_release()
-
-    def check_result(self):
+    def check_sort(self):
         if self.result.ready():
             im_sorted = self.result.get()
             self.im = im_sorted
             self.close_progress()
             self.update_canvas()
         else:
-            self.progress_toplevel.after(100, self.check_result)
+            self.progress_toplevel.after(100, self.check_sort)
+
+    def async_image_operation(self, func, check_func, args=tuple(), kwargs={},
+                              check_args=tuple()):
+        self.progress_toplevel = tk.Toplevel()
+        self.progress_toplevel.transient(self.master)
+        self.progress_toplevel.progress_frame = Progress(self.progress_toplevel)
+        self.progress_toplevel.grab_set()
+
+        self.result = self.pool.apply_async(func, args=tuple(args),
+                                            kwds=kwargs)
+
+        self.progress_toplevel.after(100, check_func, *check_args)
+        self.master.wait_window(self.progress_toplevel)
+        self.progress_toplevel.grab_release()
 
 
 # Toplevel config ----------------
