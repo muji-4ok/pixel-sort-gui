@@ -167,7 +167,8 @@ class App(tk.Frame):
 
         self.async_image_operation(
             lambda filename: Image.open(filename).convert('RGB'),
-            self.check_open, (new_filename,), check_args=(new_filename,))
+            self.check_open, (new_filename,), check_args=(new_filename,),
+            title='Opening', message='Opening file...')
 
     def check_open(self, new_filename):
         if self.result.ready():
@@ -190,7 +191,8 @@ class App(tk.Frame):
         if self.filename:
             self.async_image_operation(
                 lambda filename: self.im.save(filename), self.check_save,
-                (self.filename,), check_args=(self.filename,))
+                (self.filename,), check_args=(self.filename,), title='Saving',
+                message='Saving file...')
         else:
             self.file_save_as()
 
@@ -207,7 +209,8 @@ class App(tk.Frame):
 
         self.async_image_operation(
             lambda filename: self.im.save(filename), self.check_save,
-            (new_filename,), check_args=(new_filename,))
+            (new_filename,), check_args=(new_filename,), title='Saving',
+            message='Saving file...')
 
     def check_save(self, new_filename):
         if self.result.ready():
@@ -228,7 +231,8 @@ class App(tk.Frame):
             return
 
         self.async_image_operation(sort, self.check_sort, (self.source.copy(),),
-                                   self.options)
+                                   self.options, title='Sorting',
+                                   message='Please wait. Sorting in progress...')
 
     def check_sort(self):
         if self.result.ready():
@@ -240,10 +244,11 @@ class App(tk.Frame):
             self.progress_toplevel.after(100, self.check_sort)
 
     def async_image_operation(self, func, check_func, args=tuple(), kwargs={},
-                              check_args=tuple()):
+                              check_args=tuple(), title='', message=''):
         self.progress_toplevel = tk.Toplevel()
         self.progress_toplevel.transient(self.master)
-        self.progress_toplevel.progress_frame = Progress(self.progress_toplevel)
+        self.progress_toplevel.progress_frame = Progress(self.progress_toplevel,
+                                                         title, message)
         self.progress_toplevel.grab_set()
 
         self.result = self.pool.apply_async(func, args=tuple(args),
