@@ -1,6 +1,6 @@
 import os.path
 import tkinter as tk
-from multiprocessing.pool import ThreadPool
+from multiprocessing import Process, Queue
 from tkinter import filedialog, messagebox
 
 from PIL import ImageTk, Image
@@ -12,6 +12,26 @@ from util import *
 
 # Constants ----------------
 FILETYPES = [('All', '*.*'), ('JPG', '*.jpg'), ('PNG', '*.png')]
+DELAY = 150
+
+# Queue (needs to not be a member of any tkinter widget)
+queue = Queue()
+
+
+def save_image(queue, image, filename):
+    try:
+        image.save(filename)
+        queue.put(True)
+    except ValueError:
+        queue.put(False)
+
+
+def open_file(queue, filename):
+    try:
+        im = Image.open(filename).convert("RGB")
+        queue.put(im)
+    except OSError:
+        queue.put(None)
 
 
 class App(tk.Frame):
@@ -31,7 +51,6 @@ class App(tk.Frame):
         self.im_tk = None
         self.last_width = 0
         self.last_height = 0
-        self.pool = ThreadPool(processes=1)
 
         # Menu bar ----------------
         self.menubar = tk.Menu(self.master)
@@ -45,11 +64,9 @@ class App(tk.Frame):
 
         # Canvas ----------------
         self.canvas = tk.Canvas(self)
-        self.canvas.grid(row=0, column=0, sticky='news')
 
         # Other ----------------
         self.frame_other = tk.Frame(self)
-        self.frame_other.grid(row=1, column=0, sticky='news')
 
         self.filename_label = tk.Label(self.frame_other)
         self.filename_label['textvariable'] = self.filename_v
@@ -57,20 +74,24 @@ class App(tk.Frame):
         self.filename_label['justify'] = 'left'
         self.filename_label['anchor'] = 'w'
         self.filename_label['fg'] = rgb(0, 204, 0)
-        self.filename_label.grid(row=0, column=0, columnspan=3, sticky='news')
 
         self.sort_button = tk.Button(self.frame_other)
         self.sort_button['text'] = 'Sort'
         self.sort_button['bg'] = rgb(255, 150, 150)
         self.sort_button['font'] = ('Times', 15)
         self.sort_button['command'] = self.file_sort
-        self.sort_button.grid(row=1, column=0)
 
         self.options_button = tk.Button(self.frame_other)
         self.options_button['text'] = 'Options'
         self.options_button['bg'] = rgb(150, 255, 150)
         self.options_button['font'] = ('Times', 15)
         self.options_button['command'] = self.open_options
+
+        # Show widgets ----------------
+        self.canvas.grid(row=0, column=0, sticky='news')
+        self.frame_other.grid(row=1, column=0, sticky='news')
+        self.filename_label.grid(row=0, column=0, columnspan=3, sticky='news')
+        self.sort_button.grid(row=1, column=0)
         self.options_button.grid(row=1, column=1)
 
         # Events ----------------
@@ -82,6 +103,24 @@ class App(tk.Frame):
 
         for j in range(2):
             self.frame_other.columnconfigure(j, weight=1)
+
+    def disable_widgets(self):
+        self.menu_file.entryconfigure(0, state="disabled")
+        self.menu_file.entryconfigure(1, state="disabled")
+        self.menu_file.entryconfigure(2, state="disabled")
+        self.menu_file.entryconfigure(3, state="disabled")
+
+        self.sort_button["state"] = "disabled"
+        self.options_button["state"] = "disabled"
+
+    def enable_widgets(self):
+        self.menu_file.entryconfigure(0, state="normal")
+        self.menu_file.entryconfigure(1, state="normal")
+        self.menu_file.entryconfigure(2, state="normal")
+        self.menu_file.entryconfigure(3, state="normal")
+
+        self.sort_button["state"] = "normal"
+        self.options_button["state"] = "normal"
 
     def queue_resize(self, event):
         width = self.winfo_width()
@@ -165,34 +204,35 @@ class App(tk.Frame):
         if not new_filename:
             return
 
-        self.async_image_operation(
-            lambda filename: Image.open(filename).convert('RGB'),
-            self.check_open, (new_filename,), check_args=(new_filename,),
-            title='Opening', message='Opening file...')
+        self.async_process("Opening", "Opening file...", open_file,
+                           (new_filename,), done_func=self.open_done,
+                           done_args=(new_filename,))
 
-    def check_open(self, new_filename):
-        if self.result.ready():
-            try:
-                self.source = self.result.get()
-                self.im = self.source
-                self.im_tk = None
-                self.filename = ''
-                self.filename_v.set('None')
-            except OSError:
-                msg = f'Cannot open {new_filename}'
-                messagebox.showwarning('File error', msg)
+        # self.async_image_operation(
+        #     lambda filename: Image.open(filename).convert('RGB'),
+        #     self.check_open, (new_filename,), check_args=(new_filename,),
+        #     title='Opening', message='Opening file...')
 
-            self.close_progress()
+    def open_done(self, new_filename):
+        im = queue.get()
+
+        if im is not None:
+            self.source = im
+            self.im = self.source
+            self.im_tk = None
+            self.filename = ""
+            self.filename_v.set("None")
             self.update_canvas()
         else:
-            self.progress_toplevel.after(100, self.check_open, new_filename)
+            msg = f'Cannot open {new_filename}'
+            messagebox.showwarning('File error', msg)
 
     def file_save(self, event=None):
         if self.filename:
-            self.async_image_operation(
-                lambda filename: self.im.save(filename), self.check_save,
-                (self.filename,), check_args=(self.filename,), title='Saving',
-                message='Saving file...')
+            self.async_process("Saving", "Saving file...", save_image,
+                               (self.im, self.filename),
+                               done_func=self.save_done,
+                               done_args=(self.filename,))
         else:
             self.file_save_as()
 
@@ -207,63 +247,63 @@ class App(tk.Frame):
         if not new_filename:
             return
 
-        self.async_image_operation(
-            lambda filename: self.im.save(filename), self.check_save,
-            (new_filename,), check_args=(new_filename,), title='Saving',
-            message='Saving file...')
+        self.async_process("Saving", "Saving file...", save_image,
+                           (self.im, new_filename), done_func=self.save_done,
+                           done_args=(new_filename,))
 
-    def check_save(self, new_filename):
-        if self.result.ready():
-            try:
-                self.result.get()
-                self.filename = new_filename
-                self.filename_v.set(os.path.split(new_filename)[1])
-            except ValueError:
-                msg = f'Cannot save {new_filename}'
-                messagebox.showwarning('File error', msg)
-
-            self.close_progress()
+    def save_done(self, new_filename):
+        if queue.get():
+            self.filename = new_filename
+            self.filename_v.set(os.path.split(new_filename)[1])
         else:
-            self.progress_toplevel.after(100, self.check_save, new_filename)
+            msg = f'Cannot save {new_filename}'
+            messagebox.showwarning('File error', msg)
 
     def file_sort(self, event=None):
         if not self.source:
             return
 
-        self.async_image_operation(sort, self.check_sort, (self.source.copy(),),
-                                   self.options, title='Sorting',
-                                   message='Please wait. Sorting in progress...')
+        self.async_process("Sorting", "Please wait. Sorting in process...",
+                           sort, (self.source.copy(),), self.options,
+                           self.sort_done)
 
-    def check_sort(self):
-        if self.result.ready():
-            im_sorted = self.result.get()
-            self.im = im_sorted
-            self.close_progress()
-            self.update_canvas()
+    def sort_done(self):
+        im_sorted = queue.get()
+        self.im = im_sorted
+        self.update_canvas()
+
+    def check(self, done_func, *args):
+        if queue.empty():
+            self.after(DELAY, self.check, done_func, *args)
         else:
-            self.progress_toplevel.after(100, self.check_sort)
+            done_func(*args)
+            self.close_progress()
 
-    def async_image_operation(self, func, check_func, args=tuple(), kwargs={},
-                              check_args=tuple(), title='', message=''):
+    def async_process(self, title, message, target_func, target_args=tuple(),
+                      target_kwargs=None, done_func=lambda: None,
+                      done_args=tuple()):
         self.progress_toplevel = tk.Toplevel()
         self.progress_toplevel.transient(self.master)
         self.progress_toplevel.progress_frame = Progress(self.progress_toplevel,
                                                          title, message)
         self.progress_toplevel.grab_set()
+        self.master.update()
 
-        self.result = self.pool.apply_async(func, args=tuple(args),
-                                            kwds=kwargs)
+        process = Process(target=target_func, args=(queue, *target_args),
+                          kwargs=target_kwargs or {})
+        process.start()
 
-        self.progress_toplevel.after(100, check_func, *check_args)
+        self.after(DELAY, self.check, done_func, *done_args)
         self.master.wait_window(self.progress_toplevel)
         self.progress_toplevel.grab_release()
 
 
 # Toplevel config ----------------
-root = tk.Tk()
-root.title('Pixel sorter')
-root.iconbitmap("app_icon.ico")
-root.minsize(640, 480)
-app = App(root)
+if __name__ == "__main__":  # Very important
+    root = tk.Tk()
+    root.title('Pixel sorter')
+    root.iconbitmap("app_icon.ico")
+    root.minsize(640, 480)
+    app = App(root)
 
-root.mainloop()
+    root.mainloop()
