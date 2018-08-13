@@ -3,7 +3,7 @@ import tkinter as tk
 from multiprocessing import Process, Queue
 from tkinter import filedialog, messagebox
 
-from PIL import ImageTk, Image
+from PIL import Image, ImageTk
 
 from interface_options import Options
 from interface_progress import Progress
@@ -172,11 +172,13 @@ class App(tk.Frame):
         if not self.im:
             return
 
+        self.disable_widgets()
+        self.master.update()
+
         width, height = self.im.size
         width_canv = self.canvas.winfo_width()
         height_canv = self.canvas.winfo_height()
 
-        # if width > width_canv or height > height_canv:
         maxw = min(width, width_canv)
         maxh = min(height, height_canv)
         ratio = min(maxw / width, maxh / height)
@@ -188,6 +190,8 @@ class App(tk.Frame):
         self.clear_canvas()
         self.im_id = self.canvas.create_image(width_canv // 2, height_canv // 2,
                                               image=self.im_tk)
+
+        self.enable_widgets()
 
     def file_reset(self, event=None):
         if not self.im:
@@ -207,11 +211,6 @@ class App(tk.Frame):
         self.async_process("Opening", "Opening file...", open_file,
                            (new_filename,), done_func=self.open_done,
                            done_args=(new_filename,))
-
-        # self.async_image_operation(
-        #     lambda filename: Image.open(filename).convert('RGB'),
-        #     self.check_open, (new_filename,), check_args=(new_filename,),
-        #     title='Opening', message='Opening file...')
 
     def open_done(self, new_filename):
         im = queue.get()
